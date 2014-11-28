@@ -1,0 +1,56 @@
+<!Doctype html>
+<head>
+<title>feather.js test</title>
+<script src="feather.js"></script>
+<script>
+/**
+require解析顺序：
+rules => baseurl => map => domain 
+*/
+
+require.config.domain = ''; //配置domain
+//配置map表，为一个模块指定一个另外的请求url，map表和domain为最后解析的配置，只有在发出请求前被解析；
+require.config.map = {
+	'pkg/5_6.js': ['mod/mod5/mod5.js', 'mod/mod6/mod6.js']
+};
+
+require.config.baseurl = ''; //配置baseurl  如果某一个路径解析后完 是以/开头或者以http://开头的 则不会加baseurl
+
+//定义规则， 所有调用abc 以英文字母以及数字组成的的模块名 都被解析到 mod/abc/abc.js
+require.config.rules = [
+	[/^\w+$/, 'mod/$&/$&.js']
+];
+
+//mod/mod1/mod1.js依赖为 mod2 
+/*
+如mod1依赖mod2
+配置此项后 调用mod1时 会同时发出mod1和mod2 2个请求
+
+如果没有此配置 需要在mod1.js中 显式给出mod2依赖 并在加载mod1后再进行加载mod2
+注：key必须为完整路径， value可为完整路径或者rule中设置的短路径
+*/
+require.config.deps = {
+	'mod/mod1/mod1.js': 'mod2'
+};
+
+require.async('mod1', function(Mod1){
+	console.log(Mod1);
+});
+
+require.async('mod3', function(Mod3){
+	console.log(Mod3);
+});
+
+require.async(['mod1', 'mod2', 'mod3'], function(){
+	//加载完后 再执行
+	require.async('mod3');
+});
+
+require.async('mod5', function(Mod5){
+	console.log(Mod5);
+});
+</script>
+</head>
+
+<body></body>
+</html>
