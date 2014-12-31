@@ -265,15 +265,17 @@ Module.require = function(modulename){
 
 //或者模块真实的路径
 Module.getPath = function(path){
+    if(/:\/\//.test(path)) return path;
+
     var config = require.config, baseurl = config.baseurl || '';
 
     each(config.rules || [], function(item){
         path = path.replace(item[0], item[1]);
     }); 
 
-    if(baseurl && !/^\/|:\/\//.test(path)) path = baseurl.replace(/\/+$/, '') + '/' + path;
+    if(baseurl && path.charAt(0) != '/') path = baseurl.replace(/\/+$/, '') + '/' + path;
 
-    return path.replace(/([^:])\/+/g, '$1/');
+    return path.replace(/\/+/g, '/');
 };
 
 //获取全路径
