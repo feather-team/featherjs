@@ -216,7 +216,7 @@ Module.load = function(path, notice){
             //放置
             Module.loadedSource[_path] = 1;
 
-            if(!source.readyState || source.readyState == 'loaded' || source.readyState == 'complete'){
+            if(!source.readyState || /loaded|complete/.test(source.readyState)){
                 isLoaded = 1;
                 source.onload = source.onerror = source.onreadystatechange = null;
                 //手动触发已加载方法，防止文件是非模块，require.async之类，导致无法通知依赖模块执行，也有可能是多个文件合并，需要挨个通知
@@ -250,7 +250,9 @@ Module.loaded = function(path){
     var map = Module.mapSource[path];
 
     each(map, function(p){
-        !Module.cache[p] && new Module(p);
+        setTimeout(function(){
+            !Module.cache[p] && new Module(p);
+        }, 25);
     });
 
     map.length = 0;
@@ -310,7 +312,7 @@ var requireid = 0;
 //require, 可直接获取已加载完的模块
 require = Module.require;
 
-require.version = '1.0.0';
+require.version = '1.0.1';
 
 require.config = {
     domain: '',
