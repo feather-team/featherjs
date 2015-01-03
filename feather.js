@@ -213,12 +213,10 @@ Module.load = function(path, notice){
             //这边放置css中存在@import  import后会多次触发onload事件
             if(isLoaded) return;
 
-            //放置
-            Module.loadedSource[_path] = 1;
-
             if(!source.readyState || /loaded|complete/.test(source.readyState)){
-                isLoaded = 1;
                 source.onload = source.onerror = source.onreadystatechange = null;
+                //已加载
+                Module.loadedSource[_path] = isLoaded = 1;
                 //手动触发已加载方法，防止文件是非模块，require.async之类，导致无法通知依赖模块执行，也有可能是多个文件合并，需要挨个通知
                 Module.loaded(_path);
             }
@@ -240,8 +238,8 @@ Module.load = function(path, notice){
             });
         }
     }else if(Module.loadedSource[_path]){
-        //如果加载完毕，直接触发加载后方法。
-        Module.loaded(_path);
+        //如果加载完毕，尝试初始化。
+        Module.init(path);
     }
 };
 
@@ -250,12 +248,15 @@ Module.loaded = function(path){
     var map = Module.mapSource[path];
 
     each(map, function(p){
-        setTimeout(function(){
-            !Module.cache[p] && new Module(p);
-        }, 25);
+        Module.init(p);
     });
 
     map.length = 0;
+};
+
+//尝试初始化
+Module.init = function(path){
+    !Module.cache[path] && new Module(path);
 };
 
 //require
