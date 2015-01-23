@@ -213,12 +213,10 @@ Module.load = function(path, notice){
             //这边放置css中存在@import  import后会多次触发onload事件
             if(isLoaded) return;
 
-            //放置
-            Module.loadedSource[_path] = 1;
-
-            if(!source.readyState || source.readyState == 'loaded' || source.readyState == 'complete'){
-                isLoaded = 1;
+            if(!source.readyState || /loaded|complete/.test(source.readyState)){
                 source.onload = source.onerror = source.onreadystatechange = null;
+                //已加载
+                Module.loadedSource[_path] = isLoaded = 1;
                 //手动触发已加载方法，防止文件是非模块，require.async之类，导致无法通知依赖模块执行，也有可能是多个文件合并，需要挨个通知
                 Module.loaded(_path);
             }
@@ -240,8 +238,8 @@ Module.load = function(path, notice){
             });
         }
     }else if(Module.loadedSource[_path]){
-        //如果加载完毕，直接触发加载后方法。
-        Module.loaded(_path);
+        //如果加载完毕，尝试初始化。
+        Module.init(path);
     }
 };
 
@@ -250,10 +248,15 @@ Module.loaded = function(path){
     var map = Module.mapSource[path];
 
     each(map, function(p){
-        !Module.cache[p] && new Module(p);
+        Module.init(p);
     });
 
     map.length = 0;
+};
+
+//尝试初始化
+Module.init = function(path){
+    !Module.cache[path] && new Module(path);
 };
 
 //require
@@ -265,15 +268,17 @@ Module.require = function(modulename){
 
 //或者模块真实的路径
 Module.getPath = function(path){
+    if(/:\/\//.test(path)) return path;
+
     var config = require.config, baseurl = config.baseurl || '';
 
     each(config.rules || [], function(item){
         path = path.replace(item[0], item[1]);
     }); 
 
-    if(baseurl && !/^\/|:\/\//.test(path)) path = baseurl.replace(/\/+$/, '') + '/' + path;
+    if(baseurl && path.charAt(0) != '/') path = baseurl.replace(/\/+$/, '') + '/' + path;
 
-    return path.replace(/([^:])\/+/g, '$1/');
+    return path.replace(/\/+/g, '/');
 };
 
 //获取全路径
@@ -308,7 +313,7 @@ var requireid = 0;
 //require, 可直接获取已加载完的模块
 require = Module.require;
 
-require.version = '1.0.0';
+require.version = '1.0.1';
 
 require.config = {
     domain: '',
@@ -349,7 +354,7 @@ require.mergeConfig = function(config){
                     });
                 }
 
-                _config.map[name] = yMap;
+                tmp[name] = yMap;
             });
         }else if(i == 'deps'){
             each(c, function(dep, name){
@@ -360,6 +365,8 @@ require.mergeConfig = function(config){
         }else{
             tmp = c;
         }
+
+        _config[i] = tmp;
     });
 };
 
