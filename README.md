@@ -4,7 +4,7 @@ feather.js
 简介
 ------------
 
-feather.js是为[feather](http://feather-ui.github.io)提供一个前端模块化加载工具，提供require, define, require.async等相关接口，对js和css进行模块化管理，并可预设置模块的相关依赖进行模块依赖的并行加载，以提高前端的加载性能优化，且大小很小，整体代码包含注释不到300行左右。支持浏览器版本IE6+, firefox3.5+, chrome, safari, opera，除此之外，feather.js还支持css的加载，所有的解析规则于使用方式和加载js模块一致。
+feather.js是为[feather](http://feather-team.github.io)提供一个前端模块化加载工具，提供require, define, require.async等相关接口，对js和css进行模块化管理，并可预设置模块的相关依赖进行模块依赖的并行加载，以提高前端的加载性能优化，且大小很小，整体代码包含注释不到300行左右。支持浏览器版本IE6+, firefox3.5+, chrome, safari, opera，除此之外，feather.js还支持css的加载，所有的解析规则于使用方式和加载js模块一致。
 
 feather没有遵循严格的AMD规范， 接口单一，但依赖前置，并延迟执行函数（之前为提前执行回调函数，因配合feather的编译，修改为延迟执行），即require时会才调用模块的回调函数。
 
@@ -51,7 +51,8 @@ require.config.baseurl = '';
 
 //解析模块名
 require.config.rules = [
-    [/^\w+$/, '$&/$&.js']
+    [/^\w+$/, '$&/$&.js'],   //定义了一个规则，所以为或调用了字母和数组合的模块名时，比如 abc,则都会解析成abc/abc.js
+    [/^common~\w+$/, 'common/plugins/$&.js'] //common~a => common/plugins/a.js
 ];
 
 //通过rules配置会自动调用mod/mod1/mod1.js模块，解析过程为 baseurl + rules = 模块名; 
