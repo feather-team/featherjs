@@ -23,7 +23,7 @@ define('mod/mod1/mod1.js', function(require, exports, module){
 });
 ```
 
-* **require(modname)**: 获取某一个已存在模块，并将该模块return的值或者module.exports的值返回给变量。该函数只在模块中使用。
+* **require(modname)**: 获取某一个已存在模块，并将该模块return的值或者module.exports的值返回给变量。该函数调用的模块，必须为一个已经加载完毕的模块。
 
 ```js
 define('mod/mod1/mod1.js', function(require, exports, module){
