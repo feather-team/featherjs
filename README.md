@@ -23,7 +23,7 @@ define('mod/mod1/mod1.js', function(require, exports, module){
 });
 ```
 
-* **require(modname)**: 获取某一个模块
+* **require(modname)**: 获取某一个已存在模块，并将该模块return的值或者module.exports的值返回给变量。该函数只在模块中使用。
 
 ```js
 define('mod/mod1/mod1.js', function(require, exports, module){
@@ -37,10 +37,16 @@ define('mod/mod1/mod1.js', function(require, exports, module){
 }, 'mod/jquery/jquery.js');
 ```
 
-* **require.async(modname[, callback])**: 调用某一个模块， 多个modname则使用数组表示，callback为记载完所有的模块后执行的回调函数。
+* **require.async(modname[, callback])**: 异步调用模块， 多个modname则使用数组表示，callback为记载完所有的模块后执行的回调函数，所有被调用的模块的返回值都会被当成callback的参数传入
 ```js
 require.async('mod/mod1/mod1.js', function(Mod1){
     console.log(Mod1);
+});
+```
+
+```js
+require.async(['mod/mod1/mod1.js', 'mod/mod2/mod2.js'], function(Mod1, Mod2){
+    console.log(Mod1, Mod2);
 });
 ```
 
