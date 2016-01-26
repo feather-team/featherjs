@@ -14,6 +14,8 @@ API
 
 * **define(modname, factory[, deps])**：定义一个模块, define依赖某一模块时 需要提供deps参数, deps参数可为数组或者字符串。
 
+1.0.3版本后，第二个参数可为deps，featherjs会自动判断2种情况，如 define(mod, [deps, ]factory);
+
 ```js
 define('mod/mod1/mod1.js', function(require, exports, module){
     module.exports = {

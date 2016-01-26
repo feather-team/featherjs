@@ -1,6 +1,6 @@
 var require, define;
 
-(function(window, document){
+(function(window, document, undefined){
 //判断是否为数组
 function isArray(array){
     return Object.prototype.toString.call(array) == '[object Array]';
@@ -165,83 +165,98 @@ Module.loadedSource = {};   //已经加载的资源
 Module.mapSource = {};  
 
 //加载一个模块的js文件
-Module.load = function(path, notice){
+Module.load = function(modulename, notice){
     var cache, module;
 
     //如果该路径已经加载，则表示模块已经初始化，通知依赖本模块的模块即可
-    if(cache = Module.cache[path]) return cache.noticeModule(notice);
+    if(cache = Module.cache[modulename]) return cache.noticeModule(notice);
 
     //如果该路径没有初始化，即没有new，也就是没有加载完毕，则缓存通知模块
-    if(module = Module.noticesCache[path]) return module.notices.push(notice);
+    if(module = Module.noticesCache[modulename]) return module.notices.push(notice);
 
     //如果没有缓存，则创建
-    Module.noticesCache[path] = {notices: [notice]};
+    Module.noticesCache[modulename] = {notices: [notice]};
 
     //获取该模块的全路径
-    var _path = Module.getFullPath(path), map;
+    var realpath = Module.getRealPath(modulename), map;
 
     //模块有可能被合并至一个大文件中，即一个文件中可能包含多个模块，或者非模块。
-    if(!(map = Module.mapSource[_path])){
-        map = Module.mapSource[_path] = [];
+    if(!(map = Module.mapSource[realpath])){
+        map = Module.mapSource[realpath] = [];
     }
 
     //将该模块放置map中，等待之后的通知
-    map.push(path);
+    map.push(modulename);
 
     //如果文件没有加载
-    if(!Module.loadingSource[_path]){
-        Module.loadingSource[_path] = 1;
+    if(!Module.loadingSource[realpath]){
+        Module._load(realpath, modulename);
+    }else if(Module.loadedSource[realpath]){
+        //如果加载完毕，尝试初始化。
+        Module.init(modulename);
+    }
+};
 
-        var  
-        isCss = /\.css$/.test(path),
-        isLoaded = 0,
-        isOldWebKit = +navigator.userAgent.replace(/.*(?:Apple|Android)WebKit\/(\d+).*/, "$1") < 536,
-        source = document.createElement(isCss ? 'link' : 'script'),
-        supportOnload = 'onload' in source;
+Module._load = function(realpath, modulename){
+    Module.loadingSource[realpath] = 1;
 
-        //支持css加载
-        if(isCss){
-            source.rel = 'stylesheet';
-            source.type = 'text/css';
-            source.href = _path;
-        }else{
-            source.type = 'text/javascript';
-            source.src = _path;
-        }
+    var  
+    isCss = /\.css$/.test(modulename),
+    isLoaded = 0,
+    isOldWebKit = +navigator.userAgent.replace(/.*(?:Apple|Android)WebKit\/(\d+).*/, "$1") < 536,
+    type = isCss ? 'link' : 'script',
+    source = document.createElement(type),
+    supportOnload = 'onload' in source;
 
-        function onload(){
-            //这边放置css中存在@import  import后会多次触发onload事件
-            if(isLoaded) return;
+    //支持css加载
+    if(isCss){
+        source.rel = 'stylesheet';
+        source.type = 'text/css';
+        source.href = realpath;
+    }else{
+        source.type = 'text/javascript';
+        source.src = realpath;
+    }
 
-            //放置
-            Module.loadedSource[_path] = 1;
-
-            if(!source.readyState || source.readyState == 'loaded' || source.readyState == 'complete'){
-                isLoaded = 1;
-                source.onload = source.onerror = source.onreadystatechange = null;
-                //手动触发已加载方法，防止文件是非模块，require.async之类，导致无法通知依赖模块执行，也有可能是多个文件合并，需要挨个通知
-                Module.loaded(_path);
-            }
-        }
-
-        source.onload = source.onerror = source.onreadystatechange = onload;
-        source.charset = require.config.charset;
-        document.getElementsByTagName('head')[0].appendChild(source);
-
-        //有些老版本浏览器不支持对css的onload事件，需检查css的sheet属性是否存在，如果加载完后，此属性会出现
-        if(isCss && (isOldWebKit || !supportOnload)){
-            var id = setTimeout(function(){
-                if(source.sheet){
-                    clearTimeout(id);
-                    return onload();
-                }
-
-                setTimeout(arguments.callee);
+    each(require.config.attrs || {}, function(v, k){
+        if(isFunction(v)){
+            v = v({
+                type: type,
+                realpath: realpath,
+                modulename: modulename
             });
         }
-    }else if(Module.loadedSource[_path]){
-        //如果加载完毕，直接触发加载后方法。
-        Module.loaded(_path);
+
+        v !== undefined && source.setAttribute(k, v);
+    });
+
+    function onload(){
+        //这边放置css中存在@import  import后会多次触发onload事件
+        if(isLoaded) return;
+
+        if(!source.readyState || /loaded|complete/.test(source.readyState)){
+            source.onload = source.onerror = source.onreadystatechange = null;
+            //已加载
+            Module.loadedSource[realpath] = isLoaded = 1;
+            //手动触发已加载方法，防止文件是非模块，require.async之类，导致无法通知依赖模块执行，也有可能是多个文件合并，需要挨个通知
+            Module.loaded(realpath);
+        }
+    }
+
+    source.onload = source.onerror = source.onreadystatechange = onload;
+    source.charset = require.config.charset;
+    document.getElementsByTagName('head')[0].appendChild(source);
+
+    //有些老版本浏览器不支持对css的onload事件，需检查css的sheet属性是否存在，如果加载完后，此属性会出现
+    if(isCss && (isOldWebKit || !supportOnload)){
+        var id = setTimeout(function(){
+            if(source.sheet){
+                clearTimeout(id);
+                return onload();
+            }
+
+            setTimeout(arguments.callee);
+        });
     }
 };
 
@@ -250,34 +265,41 @@ Module.loaded = function(path){
     var map = Module.mapSource[path];
 
     each(map, function(p){
-        !Module.cache[p] && new Module(p);
+        Module.init(p);
     });
 
     map.length = 0;
 };
 
+//尝试初始化
+Module.init = function(path){
+    !Module.cache[path] && new Module(path);
+};
+
 //require
 Module.require = function(modulename){
-    var cache = Module.cache[Module.getPath(modulename)];
+    var cache = Module.cache[Module.getModuleName(modulename)];
     cache.exec();
     return cache.exports;
 };
 
 //或者模块真实的路径
-Module.getPath = function(path){
+Module.getModuleName = function(path){
+    if(/:\/\//.test(path)) return path;
+
     var config = require.config, baseurl = config.baseurl || '';
 
     each(config.rules || [], function(item){
         path = path.replace(item[0], item[1]);
     }); 
 
-    if(baseurl && !/^\/|:\/\//.test(path)) path = baseurl.replace(/\/+$/, '') + '/' + path;
+    if(baseurl && path.charAt(0) != '/') path = baseurl.replace(/\/+$/, '') + '/' + path;
 
-    return path.replace(/([^:])\/+/g, '$1/');
+    return path.replace(/\/+/g, '/');
 };
 
 //获取全路径
-Module.getFullPath = function(path){
+Module.getRealPath = function(path){
     var config = require.config, map = config.map || {}, domain = config.domain || '';
 
     for(var i in map){
@@ -294,7 +316,7 @@ Module.getDeps = function(deps){
     var d = [];
 
     each(makeArray(deps), function(dep){
-        dep = Module.getPath(dep);
+        dep = Module.getModuleName(dep);
         d.push(dep);
         d.push.apply(d, Module.getDeps(require.config.deps[dep]));
     });
@@ -308,7 +330,7 @@ var requireid = 0;
 //require, 可直接获取已加载完的模块
 require = Module.require;
 
-require.version = '1.0.0';
+require.version = '1.0.3';
 
 require.config = {
     domain: '',
@@ -316,7 +338,8 @@ require.config = {
     rules: [],
     charset: 'utf-8',
     deps: {},
-    map: {}
+    map: {},
+    attrs: {}
 };
 
 require.async = function(paths, callback){
@@ -349,7 +372,7 @@ require.mergeConfig = function(config){
                     });
                 }
 
-                _config.map[name] = yMap;
+                tmp[name] = yMap;
             });
         }else if(i == 'deps'){
             each(c, function(dep, name){
@@ -360,12 +383,20 @@ require.mergeConfig = function(config){
         }else{
             tmp = c;
         }
+
+        _config[i] = tmp;
     });
 };
 
 //define方法
 define = function(modulename, callback, depth){
-    modulename = Module.getPath(modulename);
+    if(isFunction(depth)){
+        var s = callback;
+        callback = depth;
+        depth = s;
+    }
+
+    modulename = Module.getModuleName(modulename);
     depth = depth || require.config.deps[modulename];
 
     new Module(modulename, callback, depth);

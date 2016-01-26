@@ -330,7 +330,7 @@ var requireid = 0;
 //require, 可直接获取已加载完的模块
 require = Module.require;
 
-require.version = '1.0.2';
+require.version = '1.0.3';
 
 require.config = {
     domain: '',
@@ -390,6 +390,12 @@ require.mergeConfig = function(config){
 
 //define方法
 define = function(modulename, callback, depth){
+    if(isFunction(depth)){
+        var s = callback;
+        callback = depth;
+        depth = s;
+    }
+
     modulename = Module.getModuleName(modulename);
     depth = depth || require.config.deps[modulename];
 
